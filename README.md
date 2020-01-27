@@ -37,8 +37,8 @@ sendAnEmailToMe msg apiKey =
         --The subject and content cannot be empty. String.Nonempty.Nonempty ensures that is the case (in a pretty clunky way).
         { subject = String.Nonempty.Nonempty 'S' "ubject" 
         , content = SendGrid.textContent (String.Nonempty.Nonempty 'E' "xample content")
-        , to = List.Nonempty.fromElement "your_email@address.com"
-        , from = { email = "this_can_be_anything@test.com", name = "test name" }
+        , to = List.Nonempty.fromElement "your-email@address.com"
+        , from = { email = "this-can-be-anything@test.com", name = "test name" }
         , cc = []
         , bcc = []
         }
