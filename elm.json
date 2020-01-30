@@ -3,7 +3,7 @@
     "name": "MartinSStewart/send-grid",
     "summary": "Send emails with the Send Grid API. Only useful for server-side Elm.",
     "license": "MIT",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "exposed-modules": [
         "SendGrid"
     ],

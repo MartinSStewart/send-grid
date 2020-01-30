@@ -1,4 +1,4 @@
-# Send Grid
+# SendGrid
 
 This package lets you generate and send emails to people using [SendGrid](https://sendgrid.com/).
 This is currently a simple wrapper around the `/mail/send` SendGrid v3 API call.

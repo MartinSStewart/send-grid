@@ -38,7 +38,7 @@ import Http
 import Json.Decode as JD
 import Json.Encode as JE
 import List.Nonempty
-import String.Nonempty exposing (Nonempty)
+import String.Nonempty
 
 
 {-| An email address. For example "example@yahoo.com"
@@ -50,13 +50,13 @@ type alias EmailAddress =
 {-| The body of our email. This can either be plain text or html.
 -}
 type Content a
-    = TextContent Nonempty
+    = TextContent String.Nonempty.Nonempty
     | HtmlContent (Html.String.Html a)
 
 
 {-| Create a text body for an email.
 -}
-textContent : Nonempty -> Content a
+textContent : String.Nonempty.Nonempty -> Content a
 textContent text =
     TextContent text
 
@@ -122,7 +122,7 @@ encodeNonemptyList encoder list =
 
 {-| -}
 type alias Email a =
-    { subject : Nonempty
+    { subject : String.Nonempty.Nonempty
     , content : Content a
     , to : List.Nonempty.Nonempty EmailAddress
     , cc : List EmailAddress
@@ -132,7 +132,7 @@ type alias Email a =
     }
 
 
-encodeNonemptyString : Nonempty -> JE.Value
+encodeNonemptyString : String.Nonempty.Nonempty -> JE.Value
 encodeNonemptyString nonemptyString =
     String.Nonempty.toString nonemptyString |> JE.string
 
@@ -147,7 +147,7 @@ encodeSendEmail { content, subject, nameOfSender, emailAddressOfSender, to, cc, 
         ]
 
 
-{-| A SendGrid API key. In order to user their API you must have one of these.
+{-| A SendGrid API key. In order to use the SendGrid API you must have one of these.
 -}
 type ApiKey
     = ApiKey String
