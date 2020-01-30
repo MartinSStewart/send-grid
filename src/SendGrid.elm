@@ -1,16 +1,36 @@
 module SendGrid exposing
-    ( ApiKey
-    , Email
-    , EmailAndName
-    , Error(..)
-    , apiKey
-    , encodeSendEmail
-    , htmlContent
-    , sendEmail
-    , textContent
+    ( Email, sendEmail, Error(..)
+    , ApiKey, apiKey
+    , Content, textContent, htmlContent
     )
 
-{-| -}
+{-|
+
+
+# Email
+
+@docs Email, sendEmail, Error
+
+
+# API Key
+
+In order to send email via SendGrid, you need an API key.
+To do this signup for a SendGrid account.
+
+Then after you've logged in, click on the settings tab, then API Keys, and finally "Create API Key".
+You'll get to choose if the API key has `Full Access`, `Restricted Access`, or `Billing Access`.
+For this package it's best if you select restricted access and then set `Mail Send` to `Full Access` and leave everything else as `No Access`.
+
+Once you've done this you'll be given an API key. Store it in a password manager or something for safe keeping. _You are highly recommended to not hard code the API key into your source code!_
+
+@docs ApiKey, apiKey
+
+
+# Email content
+
+@docs Content, textContent, htmlContent
+
+-}
 
 import Codec exposing (Codec)
 import Html.String
@@ -19,14 +39,6 @@ import Json.Decode as JD
 import Json.Encode as JE
 import List.Nonempty
 import String.Nonempty exposing (Nonempty)
-
-
-{-| An email address and name combo.
--}
-type alias EmailAndName =
-    { email : EmailAddress
-    , name : String
-    }
 
 
 {-| An email address. For example "example@yahoo.com"
@@ -50,6 +62,8 @@ textContent text =
 
 
 {-| Create an html body for an email.
+Note that this function expects Html._String_.Html as a parameter.
+To create those you'll need to run `elm install zwilias/elm-html-string`.
 -}
 htmlContent : Html.String.Html a -> Content a
 htmlContent html =
@@ -66,9 +80,9 @@ encodeContent content =
             JE.object [ ( "type", JE.string "text/html" ), ( "value", html |> Html.String.toString 0 |> JE.string ) ]
 
 
-encodeEmailAndName : EmailAndName -> JE.Value
-encodeEmailAndName emailAndName =
-    JE.object [ ( "email", JE.string emailAndName.email ), ( "name", JE.string emailAndName.name ) ]
+encodeEmailAndName : { name : String, email : EmailAddress } -> JE.Value
+encodeEmailAndName { email, name } =
+    JE.object [ ( "email", JE.string email ), ( "name", JE.string name ) ]
 
 
 encodePersonalization : ( List.Nonempty.Nonempty EmailAddress, List EmailAddress, List EmailAddress ) -> JE.Value
@@ -106,13 +120,15 @@ encodeNonemptyList encoder list =
     List.Nonempty.toList list |> JE.list encoder
 
 
+{-| -}
 type alias Email a =
     { subject : Nonempty
     , content : Content a
     , to : List.Nonempty.Nonempty EmailAddress
     , cc : List EmailAddress
     , bcc : List EmailAddress
-    , from : EmailAndName
+    , nameOfSender : String
+    , emailAddressOfSender : EmailAddress
     }
 
 
@@ -122,12 +138,12 @@ encodeNonemptyString nonemptyString =
 
 
 encodeSendEmail : Email a -> JE.Value
-encodeSendEmail { content, subject, from, to, cc, bcc } =
+encodeSendEmail { content, subject, nameOfSender, emailAddressOfSender, to, cc, bcc } =
     JE.object
         [ ( "subject", encodeNonemptyString subject )
         , ( "content", JE.list encodeContent [ content ] )
         , ( "personalizations", JE.list encodePersonalization [ ( to, cc, bcc ) ] )
-        , ( "from", encodeEmailAndName from )
+        , ( "from", encodeEmailAndName { name = nameOfSender, email = emailAddressOfSender } )
         ]
 
 
