@@ -264,24 +264,24 @@ type alias ErrorMessage403 =
 codec403Error : Codec ErrorMessage403
 codec403Error =
     Codec.object ErrorMessage403
-        |> Codec.optionalField "message" .message Codec.string
-        |> Codec.optionalField "field" .field Codec.string
-        |> Codec.optionalField "help" .help Codec.value
+        |> Codec.maybeField "message" .message Codec.string
+        |> Codec.maybeField "field" .field Codec.string
+        |> Codec.maybeField "help" .help Codec.value
         |> Codec.buildObject
 
 
 codec403ErrorResponse : Codec { errors : List ErrorMessage403, id : Maybe String }
 codec403ErrorResponse =
     Codec.object (\errors id -> { errors = errors |> Maybe.withDefault [], id = id })
-        |> Codec.optionalField "errors" (.errors >> Just) (Codec.list codec403Error)
-        |> Codec.optionalField "id" .id Codec.string
+        |> Codec.maybeField "errors" (.errors >> Just) (Codec.list codec403Error)
+        |> Codec.maybeField "id" .id Codec.string
         |> Codec.buildObject
 
 
 codecErrorMessage : Codec ErrorMessage
 codecErrorMessage =
     Codec.object ErrorMessage
-        |> Codec.optionalField "field" .field Codec.string
+        |> Codec.maybeField "field" .field Codec.string
         |> Codec.field "message" .message Codec.string
-        |> Codec.optionalField "error_id" .errorId Codec.string
+        |> Codec.maybeField "error_id" .errorId Codec.string
         |> Codec.buildObject
