@@ -1,5 +1,5 @@
 module SendGrid exposing
-    ( Email, sendEmail, Error(..)
+    ( Email, sendEmail, sendEmailTask, Error(..), ErrorMessage, ErrorMessage403
     , ApiKey, apiKey
     , Content, textContent, htmlContent
     )
@@ -9,7 +9,7 @@ module SendGrid exposing
 
 # Email
 
-@docs Email, sendEmail, Error
+@docs Email, sendEmail, sendEmailTask, Error, ErrorMessage, ErrorMessage403
 
 
 # API Key
@@ -39,6 +39,7 @@ import Json.Decode as JD
 import Json.Encode as JE
 import List.Nonempty
 import String.Nonempty
+import Task exposing (Task)
 
 
 {-| An email address. For example "example@yahoo.com"
@@ -167,7 +168,7 @@ sendEmail msg (ApiKey apiKey_) email =
     Http.request
         { method = "POST"
         , headers = [ Http.header "Authorization" ("Bearer " ++ apiKey_) ]
-        , url = "https://api.sendgrid.com/v3/mail/send"
+        , url = sendGridApiUrl
         , body = encodeSendEmail email |> Http.jsonBody
         , expect =
             Http.expectStringResponse msg
@@ -191,6 +192,42 @@ sendEmail msg (ApiKey apiKey_) email =
         , timeout = Nothing
         , tracker = Nothing
         }
+
+
+{-| Send an email using the SendGrid API. This is the task version of [sendEmail](#sendEmail).
+-}
+sendEmailTask : ApiKey -> Email a -> Task Error ()
+sendEmailTask (ApiKey apiKey_) email =
+    Http.task
+        { method = "POST"
+        , headers = [ Http.header "Authorization" ("Bearer " ++ apiKey_) ]
+        , url = sendGridApiUrl
+        , body = encodeSendEmail email |> Http.jsonBody
+        , resolver =
+            Http.stringResolver
+                (\response ->
+                    case response of
+                        Http.BadUrl_ url ->
+                            BadUrl url |> Err
+
+                        Http.Timeout_ ->
+                            Err Timeout
+
+                        Http.NetworkError_ ->
+                            Err NetworkError
+
+                        Http.BadStatus_ metadata body ->
+                            decodeBadStatus metadata body |> Err
+
+                        Http.GoodStatus_ _ _ ->
+                            Ok ()
+                )
+        , timeout = Nothing
+        }
+
+
+sendGridApiUrl =
+    "https://api.sendgrid.com/v3/mail/send"
 
 
 decodeBadStatus : Http.Metadata -> String -> Error
