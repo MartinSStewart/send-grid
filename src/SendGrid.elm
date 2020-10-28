@@ -32,13 +32,12 @@ Once you've done this you'll be given an API key. Store it in a password manager
 
 -}
 
-import Codec exposing (Codec)
 import Html.String
 import Http
 import Json.Decode as JD
 import Json.Encode as JE
-import List.Nonempty
-import String.Nonempty
+import List.Nonempty exposing (Nonempty)
+import String.Nonempty exposing (NonemptyString)
 import Task exposing (Task)
 
 
@@ -51,13 +50,13 @@ type alias EmailAddress =
 {-| The body of our email. This can either be plain text or html.
 -}
 type Content a
-    = TextContent String.Nonempty.Nonempty
+    = TextContent NonemptyString
     | HtmlContent (Html.String.Html a)
 
 
 {-| Create a text body for an email.
 -}
-textContent : String.Nonempty.Nonempty -> Content a
+textContent : NonemptyString -> Content a
 textContent text =
     TextContent text
 
@@ -86,7 +85,7 @@ encodeEmailAndName { email, name } =
     JE.object [ ( "email", JE.string email ), ( "name", JE.string name ) ]
 
 
-encodePersonalization : ( List.Nonempty.Nonempty EmailAddress, List EmailAddress, List EmailAddress ) -> JE.Value
+encodePersonalization : ( Nonempty EmailAddress, List EmailAddress, List EmailAddress ) -> JE.Value
 encodePersonalization ( to, cc, bcc ) =
     let
         addName =
@@ -116,16 +115,16 @@ encodePersonalization ( to, cc, bcc ) =
     JE.object (toJson :: ccJson ++ bccJson)
 
 
-encodeNonemptyList : (a -> JE.Value) -> List.Nonempty.Nonempty a -> JE.Value
+encodeNonemptyList : (a -> JE.Value) -> Nonempty a -> JE.Value
 encodeNonemptyList encoder list =
     List.Nonempty.toList list |> JE.list encoder
 
 
 {-| -}
 type alias Email a =
-    { subject : String.Nonempty.Nonempty
+    { subject : NonemptyString
     , content : Content a
-    , to : List.Nonempty.Nonempty EmailAddress
+    , to : Nonempty EmailAddress
     , cc : List EmailAddress
     , bcc : List EmailAddress
     , nameOfSender : String
@@ -133,7 +132,7 @@ type alias Email a =
     }
 
 
-encodeNonemptyString : String.Nonempty.Nonempty -> JE.Value
+encodeNonemptyString : NonemptyString -> JE.Value
 encodeNonemptyString nonemptyString =
     String.Nonempty.toString nonemptyString |> JE.string
 
@@ -244,16 +243,16 @@ decodeBadStatus metadata body =
     in
     case metadata.statusCode of
         400 ->
-            Codec.decodeString codecErrorResponse body |> toErrorCode StatusCode400
+            JD.decodeString codecErrorResponse body |> toErrorCode StatusCode400
 
         401 ->
-            Codec.decodeString codecErrorResponse body |> toErrorCode StatusCode401
+            JD.decodeString codecErrorResponse body |> toErrorCode StatusCode401
 
         403 ->
-            Codec.decodeString codec403ErrorResponse body |> toErrorCode StatusCode403
+            JD.decodeString codec403ErrorResponse body |> toErrorCode StatusCode403
 
         413 ->
-            Codec.decodeString codecErrorResponse body |> toErrorCode StatusCode413
+            JD.decodeString codecErrorResponse body |> toErrorCode StatusCode413
 
         _ ->
             UnknownError { statusCode = metadata.statusCode, body = body }
@@ -282,11 +281,9 @@ type alias ErrorMessage =
     }
 
 
-codecErrorResponse : Codec (List ErrorMessage)
+codecErrorResponse : JD.Decoder (List ErrorMessage)
 codecErrorResponse =
-    Codec.object identity
-        |> Codec.field "errors" identity (Codec.list codecErrorMessage)
-        |> Codec.buildObject
+    JD.field "errors" (JD.list codecErrorMessage)
 
 
 {-| The content of a 403 status code error.
@@ -294,31 +291,47 @@ codecErrorResponse =
 type alias ErrorMessage403 =
     { message : Maybe String
     , field : Maybe String
-    , help : Maybe JD.Value
+    , help : Maybe String
     }
 
 
-codec403Error : Codec ErrorMessage403
+codec403Error : JD.Decoder ErrorMessage403
 codec403Error =
-    Codec.object ErrorMessage403
-        |> Codec.maybeField "message" .message Codec.string
-        |> Codec.maybeField "field" .field Codec.string
-        |> Codec.maybeField "help" .help Codec.value
-        |> Codec.buildObject
+    JD.map3 ErrorMessage403
+        (optionalField "message" JD.string)
+        (optionalField "field" JD.string)
+        (optionalField "help" (JD.value |> JD.map (JE.encode 0)))
 
 
-codec403ErrorResponse : Codec { errors : List ErrorMessage403, id : Maybe String }
+codec403ErrorResponse : JD.Decoder { errors : List ErrorMessage403, id : Maybe String }
 codec403ErrorResponse =
-    Codec.object (\errors id -> { errors = errors |> Maybe.withDefault [], id = id })
-        |> Codec.maybeField "errors" (.errors >> Just) (Codec.list codec403Error)
-        |> Codec.maybeField "id" .id Codec.string
-        |> Codec.buildObject
+    JD.map2 (\errors id -> { errors = errors |> Maybe.withDefault [], id = id })
+        (optionalField "errors" (JD.list codec403Error))
+        (optionalField "id" JD.string)
 
 
-codecErrorMessage : Codec ErrorMessage
+codecErrorMessage : JD.Decoder ErrorMessage
 codecErrorMessage =
-    Codec.object ErrorMessage
-        |> Codec.maybeField "field" .field Codec.string
-        |> Codec.field "message" .message Codec.string
-        |> Codec.maybeField "error_id" .errorId Codec.string
-        |> Codec.buildObject
+    JD.map3 ErrorMessage
+        (optionalField "field" JD.string)
+        (JD.field "message" JD.string)
+        (optionalField "error_id" JD.string)
+
+
+{-| Borrowed from elm-community/json-extra
+-}
+optionalField : String -> JD.Decoder a -> JD.Decoder (Maybe a)
+optionalField fieldName decoder =
+    let
+        finishDecoding json =
+            case JD.decodeValue (JD.field fieldName JD.value) json of
+                Ok val ->
+                    -- The field is present, so run the decoder on it.
+                    JD.map Just (JD.field fieldName decoder)
+
+                Err _ ->
+                    -- The field was missing, which is fine!
+                    JD.succeed Nothing
+    in
+    JD.value
+        |> JD.andThen finishDecoding
