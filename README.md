@@ -34,11 +34,12 @@ sendAnEmailToMe msg apiKey =
     SendGrid.sendEmail 
         msg
         apiKey
-        --The subject and content cannot be empty. String.Nonempty.Nonempty ensures that is the case (in a pretty clunky way).
-        { subject = String.Nonempty.Nonempty 'S' "ubject" 
-        , content = SendGrid.textContent (String.Nonempty.Nonempty 'E' "xample content")
+        --The subject and content cannot be empty. String.Nonempty.NonemptyString ensures that is the case (in a pretty clunky way).
+        { subject = String.Nonempty.NonemptyString 'S' "ubject" 
+        , content = SendGrid.textContent (String.Nonempty.NonemptyString 'E' "xample content")
         , to = List.Nonempty.fromElement "your-email@address.com"
-        , from = { email = "this-can-be-anything@test.com", name = "test name" }
+        , emailAddressOfSender = "this-can-be-anything@test.com"
+        , nameOfSender = "test name"
         , cc = []
         , bcc = []
         }
