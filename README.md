@@ -26,7 +26,7 @@ Once you've done this you'll be given an API key. Store it in a password manager
 Once you've completed the previous step you can write something like this to send out emails (again, this will not work in a browser client due to CORS).
 ```
 import SendGrid
-import String.Nonempty
+import String.Nonempty exposing (NonemptyString)
 import List.Nonempty
 
 sendAnEmailToMe : (Result SendGrid.Error () -> msg) -> SendGrid.ApiKey -> Cmd msg
@@ -34,9 +34,9 @@ sendAnEmailToMe msg apiKey =
     SendGrid.sendEmail 
         msg
         apiKey
-        --The subject and content cannot be empty. String.Nonempty.NonemptyString ensures that is the case (in a pretty clunky way).
-        { subject = String.Nonempty.NonemptyString 'S' "ubject" 
-        , content = SendGrid.textContent (String.Nonempty.NonemptyString 'E' "xample content")
+        --The subject and content cannot be empty. NonemptyString ensures that is the case (in a pretty clunky way).
+        { subject = NonemptyString 'S' "ubject" 
+        , content = SendGrid.textContent (NonemptyString 'E' "xample content")
         , to = List.Nonempty.fromElement "your-email@address.com"
         , emailAddressOfSender = "this-can-be-anything@test.com"
         , nameOfSender = "test name"
