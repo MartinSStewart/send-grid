@@ -2,6 +2,7 @@ module SendGrid exposing
     ( Email, sendEmail, sendEmailTask, Error(..), ErrorMessage, ErrorMessage403
     , ApiKey, apiKey
     , Content, textContent, htmlContent
+    , Attachment, Disposition(..), addAttachments, addBcc, addCc
     )
 
 {-|
@@ -32,6 +33,7 @@ Once you've done this you'll be given an API key. Store it in a password manager
 
 -}
 
+import Email
 import Html.String
 import Http
 import Json.Decode as JD
@@ -41,36 +43,33 @@ import String.Nonempty exposing (NonemptyString)
 import Task exposing (Task)
 
 
-{-| An email address. For example "example@yahoo.com"
--}
-type alias EmailAddress =
-    String
-
-
 {-| The body of our email. This can either be plain text or html.
 -}
-type Content a
+type Content
     = TextContent NonemptyString
-    | HtmlContent (Html.String.Html a)
+    | HtmlContent (Html.String.Html Never)
 
 
 {-| Create a text body for an email.
 -}
-textContent : NonemptyString -> Content a
+textContent : NonemptyString -> Content
 textContent text =
     TextContent text
 
 
 {-| Create an html body for an email.
+Email clients do not support modern HTML features so it's best to use tables for layout and only basic inline styles and tags.
+
 Note that this function expects Html._String_.Html as a parameter.
 To create those you'll need to run `elm install zwilias/elm-html-string`.
+
 -}
-htmlContent : Html.String.Html a -> Content a
+htmlContent : Html.String.Html Never -> Content
 htmlContent html =
     HtmlContent html
 
 
-encodeContent : Content a -> JE.Value
+encodeContent : Content -> JE.Value
 encodeContent content =
     case content of
         TextContent text ->
@@ -80,12 +79,17 @@ encodeContent content =
             JE.object [ ( "type", JE.string "text/html" ), ( "value", html |> Html.String.toString 0 |> JE.string ) ]
 
 
-encodeEmailAndName : { name : String, email : EmailAddress } -> JE.Value
-encodeEmailAndName { email, name } =
-    JE.object [ ( "email", JE.string email ), ( "name", JE.string name ) ]
+encodeEmailAddress : Email.Email -> JE.Value
+encodeEmailAddress =
+    Email.toString >> JE.string
 
 
-encodePersonalization : ( Nonempty EmailAddress, List EmailAddress, List EmailAddress ) -> JE.Value
+encodeEmailAndName : { name : String, email : Email.Email } -> JE.Value
+encodeEmailAndName emailAndName =
+    JE.object [ ( "email", encodeEmailAddress emailAndName.email ), ( "name", JE.string emailAndName.name ) ]
+
+
+encodePersonalization : ( Nonempty Email.Email, List Email.Email, List Email.Email ) -> JE.Value
 encodePersonalization ( to, cc, bcc ) =
     let
         addName =
@@ -120,16 +124,119 @@ encodeNonemptyList encoder list =
     List.Nonempty.toList list |> JE.list encoder
 
 
-{-| -}
-type alias Email a =
+email :
     { subject : NonemptyString
-    , content : Content a
-    , to : Nonempty EmailAddress
-    , cc : List EmailAddress
-    , bcc : List EmailAddress
+    , content : Content
+    , to : Nonempty Email.Email
     , nameOfSender : String
-    , emailAddressOfSender : EmailAddress
+    , emailAddressOfSender : Email.Email
     }
+    -> Email
+email config =
+    let
+        ( images, content ) =
+            case config.content of
+                HtmlContent htmlContent_ ->
+                    findBase64Images htmlContent_ |> Tuple.mapSecond HtmlContent
+
+                TextContent _ ->
+                    config.content
+    in
+    { subject = config.subject
+    , content = content
+    , to = config.to
+    , cc = []
+    , bcc = []
+    , nameOfSender = config.nameOfSender
+    , emailAddressOfSender = config.emailAddressOfSender
+    , attachments =
+        List.indexedMap
+            (\index ( mimeType, imageContent ) ->
+                let
+                    id =
+                        "inlined-email-image-" ++ String.fromInt index
+                in
+                { content = imageContent
+                , mimeType = mimeType
+                , filename = id
+                , disposition = Inline id
+                }
+            )
+            images
+    }
+
+
+findBase64Images : Html.String.Html a -> ( List ( String, String ), Html.String.Html a )
+findBase64Images html =
+    ( [], html )
+
+
+addCc : List Email.Email -> Email -> Email
+addCc cc email_ =
+    { email_ | cc = email_.cc ++ cc }
+
+
+addBcc : List Email.Email -> Email -> Email
+addBcc bcc email_ =
+    { email_ | cc = email_.bcc ++ bcc }
+
+
+addAttachments : List Attachment -> Email -> Email
+addAttachments attachments email_ =
+    { email_ | attachments = email_.attachments ++ attachments }
+
+
+{-| -}
+type alias Email =
+    { subject : NonemptyString
+    , content : Content
+    , to : Nonempty Email.Email
+    , cc : List Email.Email
+    , bcc : List Email.Email
+    , nameOfSender : String
+    , emailAddressOfSender : Email.Email
+    , attachments : List Attachment
+    }
+
+
+type alias Attachment =
+    { content : String
+    , mimeType : String
+    , filename : String
+    , disposition : Disposition
+    }
+
+
+type Disposition
+    = AttachmentDisposition
+    | Inline String
+
+
+encodeDisposition : Disposition -> JE.Value
+encodeDisposition disposition =
+    case disposition of
+        AttachmentDisposition ->
+            JE.string "attachment"
+
+        Inline _ ->
+            JE.string "inline"
+
+
+encodeAttachment : Attachment -> JE.Value
+encodeAttachment attachment =
+    JE.object
+        (( "content", JE.string attachment.content )
+            :: ( "mimeType", JE.string attachment.mimeType )
+            :: ( "filename", JE.string attachment.filename )
+            :: ( "disposition", encodeDisposition attachment.disposition )
+            :: (case attachment.disposition of
+                    AttachmentDisposition ->
+                        []
+
+                    Inline id ->
+                        [ ( "content_id", JE.string id ) ]
+               )
+        )
 
 
 encodeNonemptyString : NonemptyString -> JE.Value
@@ -137,14 +244,21 @@ encodeNonemptyString nonemptyString =
     String.Nonempty.toString nonemptyString |> JE.string
 
 
-encodeSendEmail : Email a -> JE.Value
-encodeSendEmail { content, subject, nameOfSender, emailAddressOfSender, to, cc, bcc } =
+encodeSendEmail : Email -> JE.Value
+encodeSendEmail { content, subject, nameOfSender, emailAddressOfSender, to, cc, bcc, attachments } =
     JE.object
-        [ ( "subject", encodeNonemptyString subject )
-        , ( "content", JE.list encodeContent [ content ] )
-        , ( "personalizations", JE.list encodePersonalization [ ( to, cc, bcc ) ] )
-        , ( "from", encodeEmailAndName { name = nameOfSender, email = emailAddressOfSender } )
-        ]
+        (( "subject", encodeNonemptyString subject )
+            :: ( "content", JE.list encodeContent [ content ] )
+            :: ( "personalizations", JE.list encodePersonalization [ ( to, cc, bcc ) ] )
+            :: ( "from", encodeEmailAndName { name = nameOfSender, email = emailAddressOfSender } )
+            :: (case attachments of
+                    _ :: _ ->
+                        [ ( "attachments", JE.list encodeAttachment attachments ) ]
+
+                    [] ->
+                        []
+               )
+        )
 
 
 {-| A SendGrid API key. In order to use the SendGrid API you must have one of these.
@@ -162,13 +276,13 @@ apiKey apiKey_ =
 
 {-| Send an email using the SendGrid API.
 -}
-sendEmail : (Result Error () -> msg) -> ApiKey -> Email a -> Cmd msg
-sendEmail msg (ApiKey apiKey_) email =
+sendEmail : (Result Error () -> msg) -> ApiKey -> Email -> Cmd msg
+sendEmail msg (ApiKey apiKey_) email_ =
     Http.request
         { method = "POST"
         , headers = [ Http.header "Authorization" ("Bearer " ++ apiKey_) ]
         , url = sendGridApiUrl
-        , body = encodeSendEmail email |> Http.jsonBody
+        , body = encodeSendEmail email_ |> Http.jsonBody
         , expect =
             Http.expectStringResponse msg
                 (\response ->
@@ -195,13 +309,13 @@ sendEmail msg (ApiKey apiKey_) email =
 
 {-| Send an email using the SendGrid API. This is the task version of [sendEmail](#sendEmail).
 -}
-sendEmailTask : ApiKey -> Email a -> Task Error ()
-sendEmailTask (ApiKey apiKey_) email =
+sendEmailTask : ApiKey -> Email -> Task Error ()
+sendEmailTask (ApiKey apiKey_) email_ =
     Http.task
         { method = "POST"
         , headers = [ Http.header "Authorization" ("Bearer " ++ apiKey_) ]
         , url = sendGridApiUrl
-        , body = encodeSendEmail email |> Http.jsonBody
+        , body = encodeSendEmail email_ |> Http.jsonBody
         , resolver =
             Http.stringResolver
                 (\response ->
