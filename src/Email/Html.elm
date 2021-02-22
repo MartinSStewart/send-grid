@@ -1,4 +1,4 @@
-module Email.Html exposing (Attribute, Html, a, br, div, img, inlineImg, node, table, td, th, tr)
+module Email.Html exposing (Attribute, Html, a, br, div, img, inlineImg, node, table, td, text, th, tr)
 
 import Bytes exposing (Bytes)
 import Internal.Types
@@ -57,6 +57,30 @@ img =
     Internal.Types.Node "img"
 
 
-inlineImg : { imageData : Bytes, mimeType : String } -> List Attribute -> List Html -> Html
-inlineImg =
-    Internal.Types.InlineImage
+inlineImg : { name : String, content : Bytes, mimeType : String } -> List Attribute -> List Html -> Html
+inlineImg { name, content, mimeType } =
+    { name =
+        List.filterMap
+            (\( mimeType_, extension ) ->
+                if mimeType == mimeType_ && not (String.endsWith extension name) then
+                    Just (name ++ extension)
+
+                else
+                    Nothing
+            )
+            [ ( "image/jpeg", ".jpeg" )
+            , ( "image/jpg", ".jpg" )
+            , ( "image/png", ".png" )
+            , ( "image/gif", ".gif" )
+            ]
+            |> List.head
+            |> Maybe.withDefault name
+    , content = content
+    , mimeType = mimeType
+    }
+        |> Internal.Types.InlineImage
+
+
+text : String -> Internal.Types.Html
+text =
+    Internal.Types.TextNode

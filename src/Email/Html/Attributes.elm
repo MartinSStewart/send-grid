@@ -1,5 +1,8 @@
 module Email.Html.Attributes exposing (alt, attribute, backgroundColor, backgroundImage, backgroundPosition, backgroundRepeat, backgroundSize, border, borderRadius, fontColor, fontFamily, fontStyle, fontVariant, height, letterSpacing, lineHeight, margin, padding, src, style, textAlign, width)
 
+{-| <https://caniuse.email/>
+-}
+
 import Internal.Types exposing (Attribute(..))
 
 

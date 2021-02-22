@@ -1,8 +1,8 @@
 module SendGrid exposing
     ( Email, sendEmail, sendEmailTask, Error(..), ErrorMessage, ErrorMessage403
     , ApiKey, apiKey
-    , Content, textContent, htmlContent
-    , Attachment, Disposition(..), addAttachments, addBcc, addCc
+    , Content
+    , Attachment, addAttachments, addBcc, addCc, htmlEmail, textEmail
     )
 
 {-|
@@ -33,9 +33,13 @@ Once you've done this you'll be given an API key. Store it in a password manager
 
 -}
 
+import Base64
+import Bytes exposing (Bytes)
+import Dict exposing (Dict)
 import Email
-import Html.String
+import Email.Html
 import Http
+import Internal.Types
 import Json.Decode as JD
 import Json.Encode as JE
 import List.Nonempty exposing (Nonempty)
@@ -43,30 +47,14 @@ import String.Nonempty exposing (NonemptyString)
 import Task exposing (Task)
 
 
-{-| The body of our email. This can either be plain text or html.
--}
 type Content
     = TextContent NonemptyString
-    | HtmlContent (Html.String.Html Never)
+    | HtmlContent String
 
 
-{-| Create a text body for an email.
--}
-textContent : NonemptyString -> Content
-textContent text =
-    TextContent text
-
-
-{-| Create an html body for an email.
-Email clients do not support modern HTML features so it's best to use tables for layout and only basic inline styles and tags.
-
-Note that this function expects Html._String_.Html as a parameter.
-To create those you'll need to run `elm install zwilias/elm-html-string`.
-
--}
-htmlContent : Html.String.Html Never -> Content
-htmlContent html =
-    HtmlContent html
+type Disposition
+    = AttachmentDisposition
+    | Inline
 
 
 encodeContent : Content -> JE.Value
@@ -76,7 +64,7 @@ encodeContent content =
             JE.object [ ( "type", JE.string "text/plain" ), ( "value", encodeNonemptyString text ) ]
 
         HtmlContent html ->
-            JE.object [ ( "type", JE.string "text/html" ), ( "value", html |> Html.String.toString 0 |> JE.string ) ]
+            JE.object [ ( "type", JE.string "text/html" ), ( "value", html |> JE.string ) ]
 
 
 encodeEmailAddress : Email.Email -> JE.Value
@@ -124,92 +112,110 @@ encodeNonemptyList encoder list =
     List.Nonempty.toList list |> JE.list encoder
 
 
-email :
+htmlEmail :
     { subject : NonemptyString
-    , content : Content
+    , content : Email.Html.Html
     , to : Nonempty Email.Email
     , nameOfSender : String
     , emailAddressOfSender : Email.Email
     }
     -> Email
-email config =
-    let
-        ( images, content ) =
-            case config.content of
-                HtmlContent htmlContent_ ->
-                    findBase64Images htmlContent_ |> Tuple.mapSecond HtmlContent
+htmlEmail config =
+    Email
+        { subject = config.subject
+        , content = Internal.Types.toString config.content |> HtmlContent
+        , to = config.to
+        , cc = []
+        , bcc = []
+        , nameOfSender = config.nameOfSender
+        , emailAddressOfSender = config.emailAddressOfSender
+        , attachments =
+            getInlineImages config.content
+                |> List.map
+                    (\{ name, mimeType, content } ->
+                        ( name, { mimeType = mimeType, content = content, disposition = Inline } )
+                    )
+                |> Dict.fromList
+        }
 
-                TextContent _ ->
-                    config.content
-    in
-    { subject = config.subject
-    , content = content
-    , to = config.to
-    , cc = []
-    , bcc = []
-    , nameOfSender = config.nameOfSender
-    , emailAddressOfSender = config.emailAddressOfSender
-    , attachments =
-        List.indexedMap
-            (\index ( mimeType, imageContent ) ->
-                let
-                    id =
-                        "inlined-email-image-" ++ String.fromInt index
-                in
-                { content = imageContent
-                , mimeType = mimeType
-                , filename = id
-                , disposition = Inline id
-                }
-            )
-            images
+
+textEmail :
+    { subject : NonemptyString
+    , content : NonemptyString
+    , to : Nonempty Email.Email
+    , nameOfSender : String
+    , emailAddressOfSender : Email.Email
     }
+    -> Email
+textEmail config =
+    Email
+        { subject = config.subject
+        , content = TextContent config.content
+        , to = config.to
+        , cc = []
+        , bcc = []
+        , nameOfSender = config.nameOfSender
+        , emailAddressOfSender = config.emailAddressOfSender
+        , attachments = Dict.empty
+        }
 
 
-findBase64Images : Html.String.Html a -> ( List ( String, String ), Html.String.Html a )
-findBase64Images html =
-    ( [], html )
+getInlineImages : Internal.Types.Html -> List { content : Bytes, mimeType : String, name : String }
+getInlineImages html =
+    case html of
+        Internal.Types.Node _ _ children ->
+            List.concatMap getInlineImages children
+
+        Internal.Types.InlineImage inlineImage _ children ->
+            inlineImage :: List.concatMap getInlineImages children
+
+        Internal.Types.TextNode _ ->
+            []
 
 
 addCc : List Email.Email -> Email -> Email
-addCc cc email_ =
-    { email_ | cc = email_.cc ++ cc }
+addCc cc (Email email_) =
+    Email { email_ | cc = email_.cc ++ cc }
 
 
 addBcc : List Email.Email -> Email -> Email
-addBcc bcc email_ =
-    { email_ | cc = email_.bcc ++ bcc }
+addBcc bcc (Email email_) =
+    Email { email_ | cc = email_.bcc ++ bcc }
 
 
-addAttachments : List Attachment -> Email -> Email
-addAttachments attachments email_ =
-    { email_ | attachments = email_.attachments ++ attachments }
+addAttachments : Dict String { content : Bytes, mimeType : String } -> Email -> Email
+addAttachments attachments (Email email_) =
+    Email
+        { email_
+            | attachments =
+                Dict.union
+                    (Dict.map
+                        (\_ value -> { content = value.content, mimeType = value.mimeType, disposition = AttachmentDisposition })
+                        attachments
+                    )
+                    email_.attachments
+        }
 
 
 {-| -}
-type alias Email =
-    { subject : NonemptyString
-    , content : Content
-    , to : Nonempty Email.Email
-    , cc : List Email.Email
-    , bcc : List Email.Email
-    , nameOfSender : String
-    , emailAddressOfSender : Email.Email
-    , attachments : List Attachment
-    }
+type Email
+    = Email
+        { subject : NonemptyString
+        , content : Content
+        , to : Nonempty Email.Email
+        , cc : List Email.Email
+        , bcc : List Email.Email
+        , nameOfSender : String
+        , emailAddressOfSender : Email.Email
+        , attachments : Dict String Attachment
+        }
 
 
 type alias Attachment =
-    { content : String
+    { content : Bytes
     , mimeType : String
-    , filename : String
     , disposition : Disposition
     }
-
-
-type Disposition
-    = AttachmentDisposition
-    | Inline String
 
 
 encodeDisposition : Disposition -> JE.Value
@@ -218,23 +224,23 @@ encodeDisposition disposition =
         AttachmentDisposition ->
             JE.string "attachment"
 
-        Inline _ ->
+        Inline ->
             JE.string "inline"
 
 
-encodeAttachment : Attachment -> JE.Value
-encodeAttachment attachment =
+encodeAttachment : ( String, Attachment ) -> JE.Value
+encodeAttachment ( filename, attachment ) =
     JE.object
-        (( "content", JE.string attachment.content )
+        (( "content", Base64.fromBytes attachment.content |> Maybe.withDefault "" |> JE.string )
             :: ( "mimeType", JE.string attachment.mimeType )
-            :: ( "filename", JE.string attachment.filename )
+            :: ( "filename", JE.string filename )
             :: ( "disposition", encodeDisposition attachment.disposition )
             :: (case attachment.disposition of
                     AttachmentDisposition ->
                         []
 
-                    Inline id ->
-                        [ ( "content_id", JE.string id ) ]
+                    Inline ->
+                        [ ( "content_id", JE.string filename ) ]
                )
         )
 
@@ -245,15 +251,19 @@ encodeNonemptyString nonemptyString =
 
 
 encodeSendEmail : Email -> JE.Value
-encodeSendEmail { content, subject, nameOfSender, emailAddressOfSender, to, cc, bcc, attachments } =
+encodeSendEmail (Email { content, subject, nameOfSender, emailAddressOfSender, to, cc, bcc, attachments }) =
+    let
+        attachmentsList =
+            Dict.toList attachments
+    in
     JE.object
         (( "subject", encodeNonemptyString subject )
             :: ( "content", JE.list encodeContent [ content ] )
             :: ( "personalizations", JE.list encodePersonalization [ ( to, cc, bcc ) ] )
             :: ( "from", encodeEmailAndName { name = nameOfSender, email = emailAddressOfSender } )
-            :: (case attachments of
+            :: (case attachmentsList of
                     _ :: _ ->
-                        [ ( "attachments", JE.list encodeAttachment attachments ) ]
+                        [ ( "attachments", JE.list encodeAttachment attachmentsList ) ]
 
                     [] ->
                         []
@@ -274,10 +284,31 @@ apiKey apiKey_ =
     ApiKey apiKey_
 
 
+
+--"{subject:Test
+--,content:[{type:text/html,value:<div>test</div>}]
+--,personalizations:[{to:[{email:m@gmail.com,name:}]}]
+--,from:{email:test@test.com,name:test}}"
+--
+--"{subject:Test
+--,content:[{type:text/html,value:<div>test</div>}]
+--,personalizations:[{to:[{email:,name:}]}]
+--,from:{email:test@test.test,name:test}}"
+--
+--"{subject:Test
+--,content:[{type:text/html,value:<div>test</div>}]
+--,personalizations:[{to:[{email:martinsstewart@gmail.com,name:}]}]
+--,from:{email:test@test.com,name:test}}"
+
+
 {-| Send an email using the SendGrid API.
 -}
 sendEmail : (Result Error () -> msg) -> ApiKey -> Email -> Cmd msg
 sendEmail msg (ApiKey apiKey_) email_ =
+    let
+        _ =
+            encodeSendEmail email_ |> JE.encode 0 |> Debug.log ""
+    in
     Http.request
         { method = "POST"
         , headers = [ Http.header "Authorization" ("Bearer " ++ apiKey_) ]
