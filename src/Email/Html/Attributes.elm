@@ -1,4 +1,4 @@
-module Email.Html.Attributes exposing (alt, attribute, backgroundColor, backgroundImage, backgroundPosition, backgroundRepeat, backgroundSize, border, borderRadius, fontColor, fontFamily, fontStyle, fontVariant, height, letterSpacing, lineHeight, margin, padding, src, style, textAlign, width)
+module Email.Html.Attributes exposing (alt, attribute, backgroundColor, backgroundImage, backgroundPosition, backgroundRepeat, backgroundSize, border, borderRadius, fontColor, fontFamily, fontStyle, fontVariant, height, href, letterSpacing, lineHeight, margin, padding, src, style, textAlign, width)
 
 {-| <https://caniuse.email/>
 -}
@@ -150,3 +150,9 @@ src =
 alt : String -> Attribute
 alt =
     Attribute "alt"
+
+
+{-| -}
+href : String -> Attribute
+href =
+    Attribute "href"
