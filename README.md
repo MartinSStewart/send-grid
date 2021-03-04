@@ -1,7 +1,7 @@
 # SendGrid
 
 This package lets you create and send emails using [SendGrid](https://sendgrid.com/).
-Currently only the `/mail/send` SendGrid v3 API call.
+Currently only the `/mail/send` API call is supported.
 If there is something more you need, [explain your use case here](https://github.com/MartinSStewart/send-grid/issues).
 
 *Note that you cannot use this package to send emails from a browser.
@@ -13,7 +13,7 @@ You need to run this server-side or from a stand alone application.*
 ### Set up a SendGrid account
 
 Before you can use this package you need a SendGrid API key.
-To do this signup for a SendGrid account.
+To do this, signup for a SendGrid account.
 
 Then after you've set up your account, click on the settings tab, then API Keys, and finally "Create API Key".
 You'll get to choose if the API key has `Full Access`, `Restricted Access`, or `Billing Access`.

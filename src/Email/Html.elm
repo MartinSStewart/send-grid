@@ -46,7 +46,7 @@ type alias Attribute =
     Internal.Attribute
 
 
-{-| Convert [`Email.Html.Html`](#Html) into normal [`Html`](https://package.elm-lang.org/packages/elm/html/latest/Html). Useful if you want to preview your email content.
+{-| Convert a [`Email.Html.Html`](#Html) into normal a [`Html`](https://package.elm-lang.org/packages/elm/html/latest/Html). Useful if you want to preview your email content.
 -}
 toHtml : Html -> Html.Html msg
 toHtml =
@@ -232,8 +232,8 @@ inlineJpgImg content =
         |> Internal.InlineImage
 
 
-{-| If you want to embed a gif animation within the email body, use this function.
-The normal approach of using a base64 string as the image doesn't always work with emails.
+{-| If you want to embed a gif within the email body, use this function.
+The normal approach of using a base64 string as the image src doesn't always with emails.
 
 Note that [some email clients](https://www.caniemail.com/search/?s=gif) won't animate the gif.
 
