@@ -17,7 +17,7 @@ import Internal exposing (Attribute(..))
 
 
 {-| Use this if there's a style you want to add that isn't present in this module.
-Note that there's an increased risk that it isn't supported in many email clients.
+Note that there's an increased risk that it isn't supported by some email clients.
 -}
 style : String -> String -> Attribute
 style =
@@ -25,7 +25,7 @@ style =
 
 
 {-| Use this if there's a attribute you want to add that isn't present in this module.
-Note that there's an increased risk that it isn't supported in many email clients.
+Note that there's an increased risk that it isn't supported by some email clients.
 -}
 attribute : String -> String -> Attribute
 attribute =
