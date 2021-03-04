@@ -1,4 +1,8 @@
-module Email.Html exposing (Attribute, Html, a, b, br, div, font, h1, h2, h3, h4, h5, h6, hr, img, inlineGifImg, inlineJpgImg, inlinePngImg, label, li, node, ol, p, span, strong, table, td, text, th, toHtml, tr, u, ul)
+module Email.Html exposing
+    ( a, b, br, div, font, h1, h2, h3, h4, h5, h6, hr, img, label, li, node, ol, p, span, strong, table, td, text, th, tr, u, ul, Attribute, Html
+    , inlineGifImg, inlineJpgImg, inlinePngImg
+    , toHtml
+    )
 
 {-| Only html tags that are supported by major all email clients are listed here.
 If you need something not that's included (and potentially not universally supported) use [`node`](#node).
@@ -6,10 +10,24 @@ If you need something not that's included (and potentially not universally suppo
 These sources were used to determine what should be included:
 <https://www.campaignmonitor.com/css/color-background/background/>
 <https://www.pinpointe.com/blog/email-campaign-html-and-css-support>
+<https://www.caniemail.com/>
 
-Open an issue on github if there's something missing or incorrectly included.
+Open an issue on github if something is missing or incorrectly included.
 
-@docs Attribute, Html, a, b, br, div, font, h1, h2, h3, h4, h5, h6, hr, img, inlineGifImg, inlineJpgImg, inlinePngImg, label, li, node, ol, p, span, strong, table, td, text, th, toHtml, tr, u, ul
+
+# Html tags
+
+@docs a, b, br, div, font, h1, h2, h3, h4, h5, h6, hr, img, label, li, node, ol, p, span, strong, table, td, text, th, tr, u, ul, Attribute, Html
+
+
+# Inline images
+
+@docs inlineGifImg, inlineJpgImg, inlinePngImg
+
+
+# Convert
+
+@docs toHtml
 
 -}
 
@@ -28,15 +46,14 @@ type alias Attribute =
     Internal.Attribute
 
 
-{-| Convert Email.Html.Html into normal Html. Useful if you want to preview your email content.
+{-| Convert [`Email.Html.Html`](#Html) into normal [`Html`](https://package.elm-lang.org/packages/elm/html/latest/Html). Useful if you want to preview your email content.
 -}
 toHtml : Html -> Html.Html msg
 toHtml =
     Internal.toHtml
 
 
-{-| This allows you to create html tags not included in this module.
-It's best to avoid this if possible as your email might not render correctly on some clients.
+{-| This allows you to create html tags not included in this module (at the risk of it not rendering correctly in some email clients).
 -}
 node : String -> List Attribute -> List Html -> Html
 node =

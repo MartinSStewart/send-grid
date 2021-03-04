@@ -1,28 +1,8 @@
-module SendGrid exposing
-    ( ApiKey, apiKey
-    , textEmail, htmlEmail, addCc, addBcc, addAttachments, sendEmail, sendEmailTask, Email, Error(..), ErrorMessage, ErrorMessage403
-    )
+module SendGrid exposing (ApiKey, apiKey, textEmail, htmlEmail, addCc, addBcc, addAttachments, sendEmail, sendEmailTask, Email, Error(..), ErrorMessage, ErrorMessage403)
 
 {-|
 
-
-# API Key
-
-In order to send email via SendGrid, you need an API key.
-To do this signup for a SendGrid account.
-
-Then after you've logged in, click on the settings tab, then API Keys, and finally "Create API Key".
-You'll get to choose if the API key has `Full Access`, `Restricted Access`, or `Billing Access`.
-For this package it's best if you select restricted access and then set `Mail Send` to `Full Access` and leave everything else as `No Access`.
-
-Once you've done this you'll be given an API key. Store it in a password manager or something for safe keeping. _You are highly recommended to not hard code the API key into your source code!_
-
-@docs ApiKey, apiKey
-
-
-# Email
-
-@docs textEmail, htmlEmail, addCc, addBcc, addAttachments, sendEmail, sendEmailTask, Email, Error, ErrorMessage, ErrorMessage403
+@docs ApiKey, apiKey, textEmail, htmlEmail, addCc, addBcc, addAttachments, sendEmail, sendEmailTask, Email, Error, ErrorMessage, ErrorMessage403
 
 -}
 
@@ -107,6 +87,32 @@ encodeNonemptyList encoder list =
 
 {-| Create an email that contains html.
 
+    import Email
+    import Email.Html
+    import List.Nonempty
+    import String.Nonempty exposing (NonemptyString)
+
+    {-| An email to be sent to a recipient's email address.
+    -}
+    email : Email.Email -> SendGrid.Email
+    email recipient =
+        SendGrid.htmlEmail
+            { subject = NonemptyString 'S' "ubject"
+            , to = List.Nonempty.fromElement recipient
+            , content =
+                Email.Html.div
+                    []
+                    [ Email.Html.text "Hi!" ]
+            , nameOfSender = "test name"
+            , emailAddressOfSender =
+                -- this-can-be-anything@test.com
+                { localPart = "this-can-be-anything"
+                , tags = []
+                , domain = "test"
+                , tld = [ "com" ]
+                }
+            }
+
 Note that email clients are quite limited in what html features are supported!
 To avoid accidentally using html that's unsupported by some email clients, the `Email.Html` and `Email.Html.Attributes` modules only define tags and attributes with universal support.
 You can still use `Email.Html.node` and `Email.Html.Attributes.attribute` if you want something that might not be universally supported though.
@@ -146,6 +152,29 @@ htmlEmail config =
 
 
 {-| Create an email that only contains plain text.
+
+    import Email
+    import List.Nonempty
+    import String.Nonempty exposing (NonemptyString)
+
+    {-| An email to be sent to a recipient's email address.
+    -}
+    email : Email.Email -> SendGrid.Email
+    email recipient =
+        SendGrid.textEmail
+            { subject = NonemptyString 'S' "ubject"
+            , to = List.Nonempty.fromElement recipient
+            , content = NonemptyString 'H' "i!"
+            , nameOfSender = "test name"
+            , emailAddressOfSender =
+                -- this-can-be-anything@test.com
+                { localPart = "this-can-be-anything"
+                , tags = []
+                , domain = "test"
+                , tld = [ "com" ]
+                }
+            }
+
 -}
 textEmail :
     { subject : NonemptyString
@@ -189,14 +218,16 @@ addBcc bcc (Email email_) =
 
     attachPngImage : String -> Bytes -> Email -> Email
     attachPngImage name image email =
-        email
-            |> SendGrid.addAttachments
-                (Dict.fromList
-                    [ ( name ++ ".png"
-                      , { content = image, mimeType = "image/png" }
-                      )
-                    ]
-                )
+        SendGrid.addAttachments
+            (Dict.fromList
+                [ ( name ++ ".png"
+                  , { content = image
+                    , mimeType = "image/png"
+                    }
+                  )
+                ]
+            )
+            email
 
 If you want to include an image file within the body of your email, use `Email.Html.inlinePngImg`, `Email.Html.inlineJpegImg`, or `Email.Html.inlineGifImg` instead.
 
@@ -289,13 +320,13 @@ encodeSendEmail (Email { content, subject, nameOfSender, emailAddressOfSender, t
         )
 
 
-{-| A SendGrid API key. In order to use the SendGrid API you must have one of these.
+{-| A SendGrid API key. In order to send an email you must have one of these (see the readme for how to get one).
 -}
 type ApiKey
     = ApiKey String
 
 
-{-| Create an API key from a raw string.
+{-| Create an API key from a raw string (see the readme for how to get one).
 -}
 apiKey : String -> ApiKey
 apiKey apiKey_ =

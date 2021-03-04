@@ -6,8 +6,12 @@ If you need something not that's included (and potentially not universally suppo
 These sources were used to determine what should be included:
 <https://www.campaignmonitor.com/css/color-background/background/>
 <https://www.pinpointe.com/blog/email-campaign-html-and-css-support>
+<https://www.caniemail.com/>
 
-Open an issue on github if there's something missing or incorrectly included.
+Open an issue on github if something is missing or incorrectly included.
+
+
+# Attributes and styles
 
 @docs alt, attribute, backgroundColor, border, borderBottom, borderBottomColor, borderBottomStyle, borderBottomWidth, borderColor, borderLeft, borderLeftColor, borderLeftStyle, borderLeftWidth, borderRadius, borderRight, borderRightColor, borderRightStyle, borderRightWidth, borderStyle, borderTop, borderTopColor, borderWidth, color, fontFamily, fontSize, fontStyle, fontVariant, height, href, letterSpacing, lineHeight, padding, paddingBottom, paddingLeft, paddingRight, paddingTop, src, style, textAlign, verticalAlign, width
 
@@ -17,7 +21,7 @@ import Internal exposing (Attribute(..))
 
 
 {-| Use this if there's a style you want to add that isn't present in this module.
-Note that there's an increased risk that it isn't supported by some email clients.
+Note that there's a risk that it isn't supported by some email clients.
 -}
 style : String -> String -> Attribute
 style =
@@ -25,7 +29,7 @@ style =
 
 
 {-| Use this if there's a attribute you want to add that isn't present in this module.
-Note that there's an increased risk that it isn't supported by some email clients.
+Note that there's a risk that it isn't supported by some email clients.
 -}
 attribute : String -> String -> Attribute
 attribute =
