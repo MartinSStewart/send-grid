@@ -11,3 +11,7 @@
 
 - Replace zwilias/elm-html-string with html functions that are only defined for features that all major email clients support
 - Add support for attaching files and inlining image files
+
+# 3.0.1
+
+- Replace missing tricycle/elm-email package with bellroy/elm-email
