@@ -15,3 +15,7 @@
 # 3.0.1
 
 - Replace missing tricycle/elm-email package with bellroy/elm-email
+
+# 3.0.2
+
+- Remove unused test dependency
