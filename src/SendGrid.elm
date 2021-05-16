@@ -9,8 +9,8 @@ module SendGrid exposing (ApiKey, apiKey, textEmail, htmlEmail, addCc, addBcc, a
 import Base64
 import Bytes exposing (Bytes)
 import Dict exposing (Dict)
-import Email
 import Email.Html
+import EmailAddress exposing (EmailAddress)
 import Http
 import Internal
 import Json.Decode as JD
@@ -40,17 +40,17 @@ encodeContent content =
             JE.object [ ( "type", JE.string "text/html" ), ( "value", html |> JE.string ) ]
 
 
-encodeEmailAddress : Email.Email -> JE.Value
+encodeEmailAddress : EmailAddress -> JE.Value
 encodeEmailAddress =
-    Email.toString >> JE.string
+    EmailAddress.toString >> JE.string
 
 
-encodeEmailAndName : { name : String, email : Email.Email } -> JE.Value
+encodeEmailAndName : { name : String, email : EmailAddress } -> JE.Value
 encodeEmailAndName emailAndName =
     JE.object [ ( "email", encodeEmailAddress emailAndName.email ), ( "name", JE.string emailAndName.name ) ]
 
 
-encodePersonalization : ( Nonempty Email.Email, List Email.Email, List Email.Email ) -> JE.Value
+encodePersonalization : ( Nonempty EmailAddress, List EmailAddress, List EmailAddress ) -> JE.Value
 encodePersonalization ( to, cc, bcc ) =
     let
         addName =
@@ -121,9 +121,9 @@ You can still use `Email.Html.node` and `Email.Html.Attributes.attribute` if you
 htmlEmail :
     { subject : NonemptyString
     , content : Email.Html.Html
-    , to : Nonempty Email.Email
+    , to : Nonempty EmailAddress
     , nameOfSender : String
-    , emailAddressOfSender : Email.Email
+    , emailAddressOfSender : EmailAddress
     }
     -> Email
 htmlEmail config =
@@ -179,9 +179,9 @@ htmlEmail config =
 textEmail :
     { subject : NonemptyString
     , content : NonemptyString
-    , to : Nonempty Email.Email
+    , to : Nonempty EmailAddress
     , nameOfSender : String
-    , emailAddressOfSender : Email.Email
+    , emailAddressOfSender : EmailAddress
     }
     -> Email
 textEmail config =
@@ -199,14 +199,14 @@ textEmail config =
 
 {-| Add a list of [CC](https://en.wikipedia.org/wiki/Carbon_copy) recipients.
 -}
-addCc : List Email.Email -> Email -> Email
+addCc : List EmailAddress -> Email -> Email
 addCc cc (Email email_) =
     Email { email_ | cc = email_.cc ++ cc }
 
 
 {-| Add a list of [BCC](https://en.wikipedia.org/wiki/Blind_carbon_copy) recipients.
 -}
-addBcc : List Email.Email -> Email -> Email
+addBcc : List EmailAddress -> Email -> Email
 addBcc bcc (Email email_) =
     Email { email_ | bcc = email_.bcc ++ bcc }
 
@@ -251,11 +251,11 @@ type Email
     = Email
         { subject : NonemptyString
         , content : Content
-        , to : Nonempty Email.Email
-        , cc : List Email.Email
-        , bcc : List Email.Email
+        , to : Nonempty EmailAddress
+        , cc : List EmailAddress
+        , bcc : List EmailAddress
         , nameOfSender : String
-        , emailAddressOfSender : Email.Email
+        , emailAddressOfSender : EmailAddress
         , attachments : Dict String Attachment
         }
 

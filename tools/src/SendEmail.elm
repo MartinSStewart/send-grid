@@ -7,10 +7,9 @@ import Dict
 import Element
 import Element.Background
 import Element.Input
-import Email
 import Email.Html
+import EmailAddress exposing (EmailAddress)
 import Html exposing (Html)
-import Internal
 import List.Nonempty
 import SendGrid
 import String.Nonempty exposing (NonemptyString(..))
@@ -50,7 +49,7 @@ update msg model =
             ( { model | result = Just result }, Cmd.none )
 
         SendEmail ->
-            case Email.fromString model.emailAddress of
+            case EmailAddress.fromString model.emailAddress of
                 Just email_ ->
                     ( { model | result = Nothing }
                     , SendGrid.sendEmail
@@ -81,7 +80,7 @@ content =
         ]
 
 
-email : Email.Email -> SendGrid.Email
+email : EmailAddress -> SendGrid.Email
 email address =
     SendGrid.htmlEmail
         { subject = NonemptyString 'T' "est"
@@ -89,11 +88,12 @@ email address =
         , to = List.Nonempty.fromElement address
         , nameOfSender = "test"
         , emailAddressOfSender =
-            { localPart = "test"
-            , tags = []
-            , domain = "test"
-            , tld = [ "test" ]
-            }
+            case EmailAddress.fromString "test@test.test" of
+                Just sender ->
+                    sender
+
+                Nothing ->
+                    Debug.todo "Bad sender email"
         }
         |> SendGrid.addAttachments
             (Dict.fromList
