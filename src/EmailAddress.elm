@@ -1,11 +1,8 @@
-module EmailAddress exposing
-    ( fromString, toString
-    , EmailAddress
-    )
+module EmailAddress exposing (EmailAddress, fromString, toString)
 
 {-|
 
-@docs Email, fromString, toString
+@docs EmailAddress, fromString, toString
 
 -}
 
