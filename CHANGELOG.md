@@ -19,3 +19,12 @@
 # 3.0.2
 
 - Remove unused test dependency
+
+# 4.0.0
+
+- Remove bellroy/elm-email dependency
+- Replace it with an EmailAddress type. EmailAddress uses the elm-email implementation but has a different name (to avoid collision with another Email type), is opaque instead of being a record, and makes the text lowercase so that == works as expected (A@a.com and a@a.com should count as the same email).
+
+# 4.1.0
+
+- Forgot to expose EmailAddress module
