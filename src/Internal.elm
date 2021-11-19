@@ -70,6 +70,27 @@ toString html =
     ( result |> List.reverse |> String.concat, inlineImages )
 
 
+{-| Copied from hecrj/html-parser
+-}
+voidElements : List String
+voidElements =
+    [ "area"
+    , "base"
+    , "br"
+    , "col"
+    , "embed"
+    , "hr"
+    , "img"
+    , "input"
+    , "link"
+    , "meta"
+    , "param"
+    , "source"
+    , "track"
+    , "wbr"
+    ]
+
+
 toStringHelper : List Html -> Acc -> Acc
 toStringHelper tags acc =
     case tags of
@@ -88,20 +109,21 @@ toStringHelper tags acc =
                         }
 
         (Node tagName attributes children) :: rest ->
-            case children of
-                [] ->
-                    toStringHelper
-                        rest
-                        { acc | result = tag tagName attributes :: acc.result }
+            if List.any ((==) tagName) voidElements && List.isEmpty children then
+                toStringHelper
+                    children
+                    { acc
+                        | result = tag tagName attributes :: acc.result
+                    }
 
-                childNodes ->
-                    toStringHelper
-                        childNodes
-                        { acc
-                            | result = tag tagName attributes :: acc.result
-                            , depth = acc.depth + 1
-                            , stack = ( tagName, rest ) :: acc.stack
-                        }
+            else
+                toStringHelper
+                    children
+                    { acc
+                        | result = tag tagName attributes :: acc.result
+                        , depth = acc.depth + 1
+                        , stack = ( tagName, rest ) :: acc.stack
+                    }
 
         (InlineImage { imageType, content } attributes children) :: rest ->
             let
@@ -111,24 +133,22 @@ toStringHelper tags acc =
                 inlineImages =
                     ( src, { content = content, imageType = imageType } ) :: acc.inlineImages
             in
-            case children of
-                [] ->
-                    toStringHelper
-                        rest
-                        { acc
-                            | result = tag "img" (Attribute "src" (cid src) :: attributes) :: acc.result
-                            , inlineImages = inlineImages
-                        }
+            if List.isEmpty children then
+                toStringHelper
+                    children
+                    { acc
+                        | result = tag "img" (Attribute "src" (cid src) :: attributes) :: acc.result
+                    }
 
-                childNodes ->
-                    toStringHelper
-                        childNodes
-                        { acc
-                            | result = tag "img" (Attribute "src" (cid src) :: attributes) :: acc.result
-                            , depth = acc.depth + 1
-                            , stack = ( "img", rest ) :: acc.stack
-                            , inlineImages = inlineImages
-                        }
+            else
+                toStringHelper
+                    children
+                    { acc
+                        | result = tag "img" (Attribute "src" (cid src) :: attributes) :: acc.result
+                        , depth = acc.depth + 1
+                        , stack = ( "img", rest ) :: acc.stack
+                        , inlineImages = inlineImages
+                    }
 
         (TextNode string) :: rest ->
             toStringHelper
@@ -193,6 +213,25 @@ attributesToString attrs =
         |> withStyles styles
 
 
+escapeStyle : String -> String
+escapeStyle text =
+    String.toList text
+        |> List.map String.fromChar
+        |> List.map
+            (\char ->
+                case char of
+                    "\"" ->
+                        "&quot;"
+
+                    "&" ->
+                        "&amp;"
+
+                    _ ->
+                        char
+            )
+        |> String.concat
+
+
 withClasses : List String -> List String -> List String
 withClasses classes attrs =
     case classes of
@@ -200,7 +239,7 @@ withClasses classes attrs =
             attrs
 
         _ ->
-            buildProp "class" (String.join " " classes) :: attrs
+            buildProp "class" (String.join " " (List.map escapeStyle classes)) :: attrs
 
 
 withStyles : List String -> List String -> List String
@@ -210,7 +249,7 @@ withStyles styles attrs =
             attrs
 
         _ ->
-            buildProp "style" (String.join "; " styles) :: attrs
+            buildProp "style" (String.join "; " (List.map escapeStyle styles)) :: attrs
 
 
 type alias AttrAcc =

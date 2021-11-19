@@ -81,7 +81,7 @@ tr =
 {-| -}
 td : List Attribute -> List Html -> Html
 td =
-    Internal.Node "tr"
+    Internal.Node "td"
 
 
 {-| -}
