@@ -28,3 +28,8 @@
 # 4.1.0
 
 - Forgot to expose EmailAddress module
+
+# 4.1.1
+
+- The <td> tag was incorrectly rendered as <tr>
+- Escape " and & characters in attributes and styles
