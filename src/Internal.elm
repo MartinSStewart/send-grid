@@ -110,11 +110,7 @@ toStringHelper tags acc =
 
         (Node tagName attributes children) :: rest ->
             if List.any ((==) tagName) voidElements && List.isEmpty children then
-                toStringHelper
-                    children
-                    { acc
-                        | result = tag tagName attributes :: acc.result
-                    }
+                toStringHelper rest { acc | result = tag tagName attributes :: acc.result }
 
             else
                 toStringHelper

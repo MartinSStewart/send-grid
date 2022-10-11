@@ -3,7 +3,7 @@
     "name": "MartinSStewart/send-grid",
     "summary": "Send emails with the Send Grid API. Only useful for server-side Elm.",
     "license": "MIT",
-    "version": "4.1.1",
+    "version": "4.1.2",
     "exposed-modules": [
         "SendGrid",
         "EmailAddress",
@@ -22,5 +22,7 @@
         "elm/parser": "1.1.0 <= v < 2.0.0",
         "mgold/elm-nonempty-list": "4.0.2 <= v < 5.0.0"
     },
-    "test-dependencies": {}
+    "test-dependencies": {
+        "elm-explorations/test": "1.2.2 <= v < 2.0.0"
+    }
 }
