@@ -33,3 +33,7 @@
 
 - The <td> tag was incorrectly rendered as <tr>
 - Escape " and & characters in attributes and styles
+
+# 4.1.2
+
+- Fix void elements (i.e. <br>, <hr>, <input>) causing sibling elements to not get included in toString output
