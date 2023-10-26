@@ -37,3 +37,7 @@
 # 4.1.2
 
 - Fix void elements (i.e. <br>, <hr>, <input>) causing sibling elements to not get included in toString output
+
+# 4.1.3
+
+- Fix inline images not being included if the img tag had no child elements
