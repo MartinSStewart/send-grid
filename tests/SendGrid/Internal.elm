@@ -1,5 +1,6 @@
 module SendGrid.Internal exposing (..)
 
+import Bytes.Encode
 import Email.Html
 import Email.Html.Attributes
 import Expect exposing (Expectation)
@@ -40,5 +41,15 @@ suite =
                         |> Internal.toString
                         |> Tuple.first
                         |> Expect.equal "<div>line 1<br>inside br</br>line 2</div>"
+            , test "Handle <img> without children" <|
+                \_ ->
+                    let
+                        emptyImageContent =
+                            (Bytes.Encode.encode <| Bytes.Encode.string "")
+                    in
+                    Email.Html.inlinePngImg emptyImageContent [] []
+                        |> Internal.toString
+                        |> Tuple.second
+                        |> Expect.equalLists [("inline-image0.png",{ content = emptyImageContent, imageType = Internal.Png })]
             ]
         ]
