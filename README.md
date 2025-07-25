@@ -1,3 +1,5 @@
+**This package is deprecated. Use [MartinSStewart/elm-email](https://package.elm-lang.org/packages/MartinSStewart/elm-email/latest/) instead**
+
 # SendGrid
 
 This package lets you create and send emails using [SendGrid](https://sendgrid.com/).
